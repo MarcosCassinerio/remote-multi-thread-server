@@ -18,6 +18,16 @@ servidor */
 
 /* Maxima cantidad de cliente que soportará nuestro servidor */
 #define MAX_CLIENTS 25
+#define MAX_LINE 1024
+
+typedef struct _User {
+  int socket;
+  char nickname[MAX_LINE];
+}User;
+
+User users[MAX_CLIENTS];
+
+pthread_mutex_t mutex;
 
 /* Anunciamos el prototipo del hijo */
 void *child(void *arg);
@@ -25,7 +35,7 @@ void *child(void *arg);
 void error(char *msg);
 
 int main(int argc, char **argv){
-  int sock, *soclient;
+  int sock, *soclient, i = 0;
   struct sockaddr_in servidor, clientedir;
   socklen_t clientelen;
   pthread_t thread;
@@ -55,6 +65,11 @@ int main(int argc, char **argv){
   pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
   /************************************************************/
 
+  pthread_mutex_init(&mutex, NULL);
+
+  for(; i < MAX_CLIENTS; ++i)
+    users[i].socket = -1;
+
   /* Ya podemos aceptar conexiones */
   if(listen(sock, MAX_CLIENTS) == -1)
     error(" Listen error ");
@@ -83,21 +98,61 @@ int main(int argc, char **argv){
 }
 
 void * child(void *_arg){
-  int socket = *(int*) _arg;
-  char buf[1024];
+  int socket = *(int*) _arg, i = 0, flag = 0, myId;
+  char buf[MAX_LINE] = "", aux[MAX_LINE*2] = "";
 
   /* SEND PING! */
   // send(socket, "PING!", sizeof("PING!"), 0);
   /* WAIT FOR PONG! */
+  while(!flag) {
+    send(socket, "INGRESE UN NICKNAME:", sizeof("INGRESE UN NICKNAME:"), 0);
+    recv(socket, buf, sizeof(buf), 0);
+    pthread_mutex_lock(&mutex);
+    for(i = 0; i < MAX_CLIENTS; ++i) {
+      if(users[i].socket != -1 && !strcmp(buf, users[i].nickname)) {
+        send(socket, "NICKNAME INVALIDO", sizeof("NICKNAME INVALIDO"), 0);
+        break;
+      }
+    }
+    if (i == MAX_CLIENTS) {
+      flag = 1;
+      for(i = 0; i < MAX_CLIENTS; ++i) {
+        if(users[i].socket == -1) {
+          users[i].socket = socket;
+          strcpy(users[i].nickname, buf);
+          break;
+        }
+      }
+    }
+    pthread_mutex_unlock(&mutex);
+  }
+
+  myId = i;
+
+  send(socket, "Benvindo", sizeof("Benvindo"), 0);
 
   for (;;) {
     recv(socket, buf, sizeof(buf), 0);
 
-    if (!strcmp(buf, "/exit"))
-      break;
+    if (buf[0] != '/') {
+      for (i = 0; i < MAX_CLIENTS; ++i) {
+        if (i != myId && users[i].socket != -1) {
+          strcpy(aux, users[myId].nickname);
+          strcat(aux, ": ");
+          strcat(aux, buf);
+          aux[strlen(aux)] ='\0';
+          send(users[i].socket, aux, sizeof(aux), 0);
+        }
+      }
+    } else {
+      if (!strcmp(buf, "/exit"))
+        break;
+    }
 
-    printf("Hilo[%ld] --> Recv: %s\n", pthread_self(), buf);
+    printf("soy %d [%s] en socket %d--> Recv: %s\n", myId, users[myId].nickname, socket, buf);
   }
+
+  users[i].socket = -1;
 
   free((int*)_arg);
   return NULL;

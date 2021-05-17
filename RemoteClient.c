@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <assert.h>
 
+#define MAX_LINE 1024
 /*
   El archivo describe un sencillo cliente que se conecta al servidor establecido
   en el archivo RemoteServer.c. Se utiliza de la siguiente manera:
@@ -31,7 +32,7 @@ void error(char *msg){
 }
 
 void *sendMesseges() {
-  char buf[1024];
+  char buf[MAX_LINE];
 
   for (;;) {
     scanf(" %[^\n]", buf);
@@ -61,7 +62,7 @@ void handler(int sig) {
 }
 
 int main(int argc, char **argv) {
-  char buf[1024];
+  char buf[MAX_LINE];
 
   /*Chequeamos mínimamente que los argumentos fueron pasados*/
   if(argc != 3){
@@ -92,7 +93,7 @@ int main(int argc, char **argv) {
   for(;;) {
     recv(sock, buf, sizeof(buf),0);
 
-    printf("%s\n", buf);
+    printf("%s", buf);
   }
 
   return 0;
