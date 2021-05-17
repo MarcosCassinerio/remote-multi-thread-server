@@ -1,7 +1,7 @@
 all: server client
 
-server: 
+server: RemoteMultiThreadServer.c
 	gcc -g -pthread -o server RemoteMultiThreadServer.c
 
-client:
+client: RemoteClient.c
 	gcc -g -pthread -o client RemoteClient.c
