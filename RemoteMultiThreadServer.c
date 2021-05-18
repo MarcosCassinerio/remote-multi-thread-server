@@ -200,14 +200,16 @@ void * child(void *_arg){
           send(socket, "NO SE PUEDE CAMBIAR AL NICKNAME ACTUAL", sizeof("NO SE PUEDE CAMBIAR AL NICKNAME ACTUAL"), 0);
       } else if (strlen(buf) > 7 && buf[4] == ' ' && sscanf(buf, "/msg %s %s", nickname, msg) == 2) {
         if (strcmp(msg, "") != 0) {
-          
+
         } else 
           send(socket, "EL MENSAJE NO PUEDE ESTAR VACIO", sizeof("EL MENSAJE NO PUEDE ESTAR VACIO"), 0);
       } else
         send(socket, "COMANDO INVALIDO", sizeof("COMANDO INVALIDO"), 0);
     }
   }
+  pthread_mutex_lock(&mutex);
   users[i].socket = -1;
+  pthread_mutex_unlock(&mutex);
   free((int*)_arg);
   return NULL;
 }
