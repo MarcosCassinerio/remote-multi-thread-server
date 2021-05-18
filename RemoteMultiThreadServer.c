@@ -99,7 +99,7 @@ int main(int argc, char **argv){
 
 void * child(void *_arg){
   int socket = *(int*) _arg, i = 0, flag = 0, myId;
-  char buf[MAX_LINE] = "", aux[MAX_LINE*2] = "";
+  char buf[MAX_LINE] = "", msg[MAX_LINE*2] = "", nickname[MAX_LINE] = "";
 
   /* SEND PING! */
   // send(socket, "PING!", sizeof("PING!"), 0);
@@ -107,53 +107,107 @@ void * child(void *_arg){
   while(!flag) {
     send(socket, "INGRESE UN NICKNAME:", sizeof("INGRESE UN NICKNAME:"), 0);
     recv(socket, buf, sizeof(buf), 0);
-    pthread_mutex_lock(&mutex);
-    for(i = 0; i < MAX_CLIENTS; ++i) {
-      if(users[i].socket != -1 && !strcmp(buf, users[i].nickname)) {
-        send(socket, "NICKNAME INVALIDO", sizeof("NICKNAME INVALIDO"), 0);
-        break;
-      }
-    }
-    if (i == MAX_CLIENTS) {
-      flag = 1;
+    if(!strcmp(buf, "/exit"))
+      break;
+    if (strchr(buf, ' ') == NULL && buf[0]!='/') {
+      pthread_mutex_lock(&mutex);
       for(i = 0; i < MAX_CLIENTS; ++i) {
-        if(users[i].socket == -1) {
-          users[i].socket = socket;
-          strcpy(users[i].nickname, buf);
+        if(users[i].socket != -1 && !strcmp(buf, users[i].nickname)) {
+          send(socket, "NICKNAME YA EN USO", sizeof("NICKNAME YA EN USO"), 0);
           break;
         }
       }
-    }
-    pthread_mutex_unlock(&mutex);
+      if (i == MAX_CLIENTS) {
+        flag = 1;
+        for(i = 0; i < MAX_CLIENTS; ++i) {
+          if(users[i].socket == -1) {
+            users[i].socket = socket;
+            strcpy(users[i].nickname, buf);
+            break;
+          }
+        }
+      }
+      pthread_mutex_unlock(&mutex);
+    } else
+      send(socket, "NICKNAME INVALIDO", sizeof("NICKNAME INVALIDO"), 0);
+  }
+
+  if (!flag) {
+    free((int*)_arg);
+    return NULL;
   }
 
   myId = i;
 
-  send(socket, "Benvindo", sizeof("Benvindo"), 0);
+  strcpy(msg, users[myId].nickname);
+  strcat(msg, " ENTRO A LA SALA");
+  msg[strlen(msg)] ='\0';
 
+  pthread_mutex_lock(&mutex);
+  for (i = 0; i < MAX_CLIENTS; ++i) {
+    if (i != myId && users[i].socket != -1) 
+      send(users[i].socket, msg, sizeof(msg), 0);
+  }
+  pthread_mutex_unlock(&mutex);
+  
+  send(socket, "BENVINDO", sizeof("BENVINDO"), 0);
   for (;;) {
+    strcpy(nickname, "");
+    strcpy(msg, "");
     recv(socket, buf, sizeof(buf), 0);
+    printf("soy %d [%s] en socket %d--> Recv: %s\n", myId, users[myId].nickname, socket, buf);
 
     if (buf[0] != '/') {
+      strcpy(msg, users[myId].nickname);
+      strcat(msg, ": ");
+      strcat(msg, buf);
+      msg[strlen(msg)] ='\0';
+      pthread_mutex_lock(&mutex);
       for (i = 0; i < MAX_CLIENTS; ++i) {
-        if (i != myId && users[i].socket != -1) {
-          strcpy(aux, users[myId].nickname);
-          strcat(aux, ": ");
-          strcat(aux, buf);
-          aux[strlen(aux)] ='\0';
-          send(users[i].socket, aux, sizeof(aux), 0);
-        }
+        if (i != myId && users[i].socket != -1) 
+          send(users[i].socket, msg, sizeof(msg), 0);
       }
+      pthread_mutex_unlock(&mutex);
     } else {
       if (!strcmp(buf, "/exit"))
         break;
+      if(strlen(buf) > 10 && buf[9] == ' ' && sscanf(buf, "/nickname %s", nickname) == 1) {
+        if(strcmp(users[myId].nickname, nickname)) {
+          if (strchr(nickname, ' ') == NULL && nickname[0]!='/') {
+            pthread_mutex_lock(&mutex);
+            for(i = 0; i < MAX_CLIENTS; ++i) {
+              if(users[i].socket != -1 && !strcmp(nickname, users[i].nickname)) {
+                send(socket, "NICKNAME YA EN USO", sizeof("NICKNAME YA EN USO"), 0);
+                break;
+              }
+            }
+            if (i == MAX_CLIENTS) {
+              strcpy(msg, users[myId].nickname);
+              strcat(msg, " CAMBIO SU NICKNAME A ");
+              strcat(msg, nickname);
+              msg[strlen(msg)] ='\0';
+              for (i = 0; i < MAX_CLIENTS; ++i) {
+                if (i != myId && users[i].socket != -1) 
+                  send(users[i].socket, msg, sizeof(msg), 0);
+              }
+              strcpy(users[myId].nickname, nickname);
+              send(socket, "NICKNAME ACTUALIZADO", sizeof("NICKNAME ACTUALIZADO"), 0);
+            }
+            pthread_mutex_unlock(&mutex);
+          } else 
+            send(socket, "NICKNAME INVALIDO", sizeof("NICKNAME INVALIDO"), 0);
+        } else
+          send(socket, "NO SE PUEDE CAMBIAR AL NICKNAME ACTUAL", sizeof("NO SE PUEDE CAMBIAR AL NICKNAME ACTUAL"), 0);
+      } else if (strlen(buf) > 7 && buf[4] == ' ' && sscanf(buf, "/msg %s %s", nickname, msg) == 2) {
+        if (strcmp(msg, "") != 0) {
+          
+        } else 
+          send(socket, "EL MENSAJE NO PUEDE ESTAR VACIO", sizeof("EL MENSAJE NO PUEDE ESTAR VACIO"), 0);
+      } else
+        send(socket, "COMANDO INVALIDO", sizeof("COMANDO INVALIDO"), 0);
     }
-
-    printf("soy %d [%s] en socket %d--> Recv: %s\n", myId, users[myId].nickname, socket, buf);
   }
-
   users[i].socket = -1;
-
   free((int*)_arg);
   return NULL;
 }

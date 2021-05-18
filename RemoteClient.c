@@ -31,7 +31,7 @@ void error(char *msg){
   exit((perror(msg), 1));
 }
 
-void *sendMesseges() {
+void *send_messeges() {
   char buf[MAX_LINE];
 
   for (;;) {
@@ -88,12 +88,12 @@ int main(int argc, char **argv) {
 
   signal(SIGINT, handler);
 
-  assert(!pthread_create(&thread, NULL, sendMesseges, NULL));
+  assert(!pthread_create(&thread, NULL, send_messeges, NULL));
 
   for(;;) {
     recv(sock, buf, sizeof(buf),0);
 
-    printf("%s", buf);
+    printf("%s\n", buf);
   }
 
   return 0;
