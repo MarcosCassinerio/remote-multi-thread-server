@@ -14,7 +14,7 @@
 typedef struct _User {
   int socket;
   char nickname[MAX_LINE];
-}User;
+} User;
 
 int sockServer;
 User users[MAX_CLIENTS];
@@ -27,7 +27,7 @@ void error(char *msg);
 
 void handler(int sig);
 
-int main(int argc, char **argv){
+int main(int argc, char **argv) {
   int *soclient, i = 0;
   struct sockaddr_in servidor, clientedir;
   socklen_t clientelen;
@@ -36,7 +36,7 @@ int main(int argc, char **argv){
 
   if (argc <= 1) error("Faltan argumentos");
 
-  if( (sockServer = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
+  if ((sockServer = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
     error("Socket Init");
 
   servidor.sin_family = AF_INET; 
@@ -55,13 +55,13 @@ int main(int argc, char **argv){
 
   signal(SIGINT, handler);
 
-  for(; i < MAX_CLIENTS; ++i)
+  for (; i < MAX_CLIENTS; ++i)
     users[i].socket = -1;
 
-  if(listen(sockServer, MAX_CLIENTS) == -1)
+  if (listen(sockServer, MAX_CLIENTS) == -1)
     error(" Listen error ");
 
-  for(;;){
+  for (;;) {
     soclient = malloc(sizeof(int));
 
     clientelen = sizeof(clientedir);
@@ -77,27 +77,27 @@ int main(int argc, char **argv){
   return 0;
 }
 
-void * child(void *_arg){
+void* child(void *_arg) {
   int socket = *(int*) _arg, i = 0, flag = 0, myId;
   char buf[MAX_LINE] = "", msg[MAX_LINE*2] = "", nickname[MAX_LINE] = "", aux[MAX_LINE*2] = "";
 
-  while(!flag) {
+  while (!flag) {
     send(socket, "INGRESE UN NICKNAME:", sizeof("INGRESE UN NICKNAME:"), 0);
     recv(socket, buf, sizeof(buf), 0);
-    if(!strcmp(buf, "/exit"))
+    if (!strcmp(buf, "/exit"))
       break;
     if (strchr(buf, ' ') == NULL && buf[0]!='/') {
       pthread_mutex_lock(&mutex);
-      for(i = 0; i < MAX_CLIENTS; ++i) {
-        if(users[i].socket != -1 && !strcmp(buf, users[i].nickname)) {
+      for (i = 0; i < MAX_CLIENTS; ++i) {
+        if (users[i].socket != -1 && !strcmp(buf, users[i].nickname)) {
           send(socket, "NICKNAME YA EN USO", sizeof("NICKNAME YA EN USO"), 0);
           break;
         }
       }
       if (i == MAX_CLIENTS) {
         flag = 1;
-        for(i = 0; i < MAX_CLIENTS; ++i) {
-          if(users[i].socket == -1) {
+        for (i = 0; i < MAX_CLIENTS; ++i) {
+          if (users[i].socket == -1) {
             users[i].socket = socket;
             strcpy(users[i].nickname, buf);
             break;
@@ -151,12 +151,12 @@ void * child(void *_arg){
     } else {
       if (!strcmp(buf, "/exit"))
         break;
-      if(strlen(buf) > 10 && buf[9] == ' ' && sscanf(buf, "/nickname %s", nickname) == 1) {
-        if(strcmp(users[myId].nickname, nickname)) {
+      if (strlen(buf) > 10 && buf[9] == ' ' && sscanf(buf, "/nickname %s", nickname) == 1) {
+        if (strcmp(users[myId].nickname, nickname)) {
           if (strchr(nickname, ' ') == NULL && nickname[0]!='/') {
             pthread_mutex_lock(&mutex);
-            for(i = 0; i < MAX_CLIENTS; ++i) {
-              if(users[i].socket != -1 && !strcmp(nickname, users[i].nickname)) {
+            for (i = 0; i < MAX_CLIENTS; ++i) {
+              if (users[i].socket != -1 && !strcmp(nickname, users[i].nickname)) {
                 send(socket, "NICKNAME YA EN USO", sizeof("NICKNAME YA EN USO"), 0);
                 break;
               }
@@ -218,8 +218,7 @@ void error(char *msg){
 void handler(int sig) {
   int i = 0;
   pthread_mutex_lock(&mutex);
-  for (; i < MAX_CLIENTS; ++i)
-  {
+  for (; i < MAX_CLIENTS; ++i) {
     if (users[i].socket != -1)
       send(users[i].socket, "/server closed", sizeof("/server closed"), 0);
   }

@@ -52,12 +52,12 @@ void handler(int sig) {
 int main(int argc, char **argv) {
   char buf[MAX_LINE];
 
-  if(argc != 3){
+  if (argc != 3) {
     fprintf(stderr,"El uso es \'%s IP port\'", argv[0]);
     exit(1);
   }
 
-  if( (sock = socket(AF_INET , SOCK_STREAM, 0)) < 0 )
+  if ((sock = socket(AF_INET , SOCK_STREAM, 0)) < 0 )
     error("No se pudo iniciar el socket");
 
   if (getaddrinfo(argv[1], argv[2], NULL, &resultado)){
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
     exit(2);
   }
 
-  if(connect(sock, (struct sockaddr *) resultado->ai_addr, resultado->ai_addrlen) != 0)
+  if (connect(sock, (struct sockaddr *) resultado->ai_addr, resultado->ai_addrlen) != 0)
     error("No se pudo conectar :(. ");
 
   printf("La conexión fue un éxito!\n");
@@ -74,11 +74,13 @@ int main(int argc, char **argv) {
 
   assert(!pthread_create(&thread, NULL, send_messeges, NULL));
 
-  for(;;) {
+  for (;;) {
     recv(sock, buf, sizeof(buf),0);
 
-    if(strcmp(buf, "/server closed") == 0)
+    if (strcmp(buf, "/server closed") == 0) {
+      printf("SE CERRO EL SERVIDOR\n");
       kill(getpid(), SIGINT);
+    }
 
     printf("%s\n", buf);
   }
